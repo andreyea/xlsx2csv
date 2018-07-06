@@ -10,17 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/extrame/xls"
 	"github.com/tealeg/xlsx"
 )
 
 func main() {
-	//var csvRow []string
-	//sourceFile := "Book1.xlsx"
-	sourceFile := flag.String("ds", "./", "Path to an Excel file or directory")
-	targetDirectory := flag.String("dt", "./", "Path to where CSV will be saved")
+	sourceFile := flag.String("src", "./", "Path to an Excel file or directory")
+	targetDirectory := flag.String("dst", "./", "Path to where CSV will be saved")
 	flag.Parse()
-
 	if _, err := os.Stat(*sourceFile); os.IsNotExist(err) {
 		fmt.Println("Source not found!")
 		log.Fatal(err)
@@ -33,11 +29,9 @@ func main() {
 	if _, err := os.Stat(*sourceFile); err == nil {
 		fileExt := filepath.Ext(*sourceFile)
 		if fileExt == "" {
-			//Get files in the directory
 			files, _ := ioutil.ReadDir(*sourceFile)
 
 			for _, file := range files {
-				//fmt.Println(file.Name())
 				if strings.ToLower(filepath.Ext(file.Name())) == ".xlsx" && file.Name()[:1] != "~" {
 					fmt.Println("Processing " + file.Name())
 					parseXlsx(*sourceFile+file.Name(), *targetDirectory)
@@ -54,32 +48,33 @@ func main() {
 
 	}
 
-	//parseXls(*sourceFile, *targetDirectory)
-
 }
 
 func parseXlsx(sourceFile string, targetDirectory string) {
 	sourceFileName := sourceFile[:len(sourceFile)-5]
-	//fmt.Println(sourceFile)
-	xlFile, _ := xlsx.OpenFile(sourceFile)
-
-	for _, sheet := range xlFile.Sheets {
-		targetFile, _ := os.Create(targetDirectory + sourceFileName + "_" + sheet.Name + ".csv")
-		defer targetFile.Close()
-		writer := csv.NewWriter(targetFile)
-		defer writer.Flush()
-		for _, row := range sheet.Rows {
-			csvRow := []string{}
-			for _, cell := range row.Cells {
-				text := cell.Value
-				csvRow = append(csvRow, text)
-				//fmt.Printf("%s\n", text)
+	xlFile, err := xlsx.OpenFile(sourceFile)
+	if err != nil {
+		fmt.Println("Could not open:" + sourceFile)
+	} else {
+		for _, sheet := range xlFile.Sheets {
+			targetFile, _ := os.Create(targetDirectory + sourceFileName + "_" + sheet.Name + ".csv")
+			defer targetFile.Close()
+			writer := csv.NewWriter(targetFile)
+			defer writer.Flush()
+			for _, row := range sheet.Rows {
+				csvRow := []string{}
+				for _, cell := range row.Cells {
+					text := cell.Value
+					csvRow = append(csvRow, text)
+				}
+				writer.Write(csvRow)
 			}
-			writer.Write(csvRow)
 		}
+		fmt.Println("Finished processing " + sourceFile)
 	}
 }
 
+/*
 func parseXls(sourceFile string, targetDirectory string) {
 	xlFile, _ := xls.Open(sourceFile, "utf-8")
 
@@ -94,8 +89,8 @@ func parseXls(sourceFile string, targetDirectory string) {
 				fmt.Println(cell)
 			}
 		}
-
 	}
 
 	//fmt.Println("test:", xlFile2.NumSheets())
 }
+*/
